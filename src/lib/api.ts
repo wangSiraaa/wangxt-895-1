@@ -19,15 +19,16 @@ type InternalConfig = AxiosRequestConfig & { headers?: any }
 
 api.interceptors.request.use(
   (config: InternalConfig) => {
+    const isPublic = typeof config.url === 'string' && config.url.startsWith('/public/')
     const token = localStorage.getItem('token')
-    if (token && config.headers) {
+    if (token && config.headers && !isPublic) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config as any
   },
   (error: AxiosError) => {
     return Promise.reject(error)
-  }
+  },
 )
 
 api.interceptors.response.use(
@@ -49,13 +50,15 @@ api.interceptors.response.use(
     const { showToast } = useToast()
     const status = error.response?.status
     const message = error.response?.data?.message || error.message
+    const configUrl = (error.config?.url || '') as string
+    const isPublic = configUrl.startsWith('/public/')
 
-    if (status === 401) {
+    if (status === 401 && !isPublic) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'
       showToast('登录已过期，请重新登录', 'error')
-    } else {
+    } else if (status !== 401 || !isPublic) {
       showToast(message || '请求失败', 'error')
     }
 

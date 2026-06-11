@@ -12,6 +12,8 @@ export type BookingStatus =
   | 'completed'
   | 'cancelled'
 
+export type AuditStatus = 'pending' | 'approved' | 'rejected'
+
 export interface User {
   id: string
   username: string
@@ -50,6 +52,10 @@ export interface Booking {
   contact_name?: string
   contact_phone?: string
   notes?: string
+  audit_status: AuditStatus
+  audit_remark?: string
+  audit_by?: string
+  audit_at?: string
   created_by: string
   created_at: string
   updated_at: string
@@ -59,6 +65,7 @@ export interface BookingDetail extends Booking {
   school_name: string
   school_address?: string
   created_by_name: string
+  audit_by_name?: string
 }
 
 export interface Student {
@@ -214,6 +221,11 @@ export interface UpdateBookingPayload {
   contact_name?: string
   contact_phone?: string
   notes?: string
+}
+
+export interface AuditBookingPayload {
+  audit_status: AuditStatus
+  audit_remark?: string
 }
 
 export interface UpdateStudentListPayload {

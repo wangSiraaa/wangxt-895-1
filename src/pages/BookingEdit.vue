@@ -122,7 +122,7 @@ async function handleSave() {
       await api.post('/bookings', payload)
       showToast('预约创建成功', 'success')
     }
-    router.push('/bookings')
+    router.push('/app/bookings')
   } catch (err) {
     console.error(err)
   } finally {

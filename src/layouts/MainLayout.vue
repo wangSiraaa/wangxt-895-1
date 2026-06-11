@@ -27,13 +27,13 @@ interface MenuItem {
 }
 
 const allMenus: MenuItem[] = [
-  { path: '/dashboard', label: '仪表盘', icon: LayoutDashboard },
-  { path: '/bookings', label: '预约管理', icon: ClipboardList, roles: ['sales', 'dispatcher', 'finance'] },
-  { path: '/schedules', label: '排班管理', icon: CalendarCheck, roles: ['dispatcher', 'guide'] },
-  { path: '/catering', label: '餐饮管理', icon: UtensilsCrossed, roles: ['catering_admin', 'dispatcher'] },
-  { path: '/checkin', label: '签到接待', icon: UserCheck, roles: ['guide', 'dispatcher'] },
-  { path: '/settlements', label: '结算管理', icon: Receipt, roles: ['finance'] },
-  { path: '/audit', label: '审计日志', icon: FileText },
+  { path: '/app/dashboard', label: '仪表盘', icon: LayoutDashboard },
+  { path: '/app/bookings', label: '预约管理', icon: ClipboardList, roles: ['sales', 'dispatcher', 'finance'] },
+  { path: '/app/schedules', label: '排班管理', icon: CalendarCheck, roles: ['dispatcher', 'guide'] },
+  { path: '/app/catering', label: '餐饮管理', icon: UtensilsCrossed, roles: ['catering_admin', 'dispatcher'] },
+  { path: '/app/checkin', label: '签到接待', icon: UserCheck, roles: ['guide', 'dispatcher'] },
+  { path: '/app/settlements', label: '结算管理', icon: Receipt, roles: ['finance'] },
+  { path: '/app/audit', label: '审计日志', icon: FileText },
 ]
 
 const visibleMenus = computed(() => {

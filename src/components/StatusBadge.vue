@@ -11,6 +11,12 @@ export const statusConfig: Record<string, { label: string; classes: string }> = 
   completed: { label: '已完成', classes: 'bg-green-100 text-green-700 border-green-200' },
   cancelled: { label: '已取消', classes: 'bg-red-100 text-red-700 border-red-200' },
 }
+
+export const auditStatusConfig: Record<string, { label: string; classes: string }> = {
+  pending: { label: '待审核', classes: 'bg-slate-100 text-slate-700 border-slate-200' },
+  approved: { label: '审核通过', classes: 'bg-green-100 text-green-700 border-green-200' },
+  rejected: { label: '审核驳回', classes: 'bg-red-100 text-red-700 border-red-200' },
+}
 </script>
 
 <script setup lang="ts">
@@ -18,10 +24,12 @@ import { computed } from 'vue'
 
 const props = defineProps<{
   status: string
+  type?: 'booking' | 'audit'
 }>()
 
 const config = computed(() => {
-  return statusConfig[props.status] || { label: props.status, classes: 'bg-slate-100 text-slate-700 border-slate-200' }
+  const cfg = props.type === 'audit' ? auditStatusConfig : statusConfig
+  return cfg[props.status] || { label: props.status, classes: 'bg-slate-100 text-slate-700 border-slate-200' }
 })
 </script>
 

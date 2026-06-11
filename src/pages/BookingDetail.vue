@@ -11,6 +11,8 @@ import {
   Utensils,
   AlertTriangle,
   Clock,
+  CheckCircle,
+  XCircle,
 } from 'lucide-vue-next'
 import StatusBadge from '@/components/StatusBadge.vue'
 import DataTable from '@/components/DataTable.vue'
@@ -18,7 +20,7 @@ import type { Column } from '@/components/DataTable.vue'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
-import type { BookingDetail } from '../../../shared/types'
+import type { BookingDetail as BookingDetailType } from '../../../shared/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,7 +30,13 @@ const { showToast } = useToast()
 const bookingId = computed(() => route.params.id as string)
 
 const loading = ref(false)
-const booking = ref<BookingDetail | null>(null)
+const booking = ref<BookingDetailType | null>(null)
+const auditLoading = ref(false)
+const showAuditModal = ref(false)
+const auditForm = ref({
+  audit_status: 'approved' as 'approved' | 'rejected',
+  audit_remark: '',
+})
 
 const studentList = ref<
   Array<{ id: string; name: string; grade?: string; class_name?: string }>
@@ -85,19 +93,42 @@ function goBack() {
 }
 
 function goEdit() {
-  router.push(`/bookings/${bookingId.value}/edit`)
+  router.push(`/app/bookings/${bookingId.value}/edit`)
 }
 
 async function loadBooking() {
   loading.value = true
   try {
-    const data = (await api.get(`/bookings/${bookingId.value}`)) as BookingDetail
+    const data = (await api.get(`/bookings/${bookingId.value}`)) as BookingDetailType
     booking.value = data
   } catch (err) {
     showToast('加载预约详情失败', 'error')
     console.error(err)
   } finally {
     loading.value = false
+  }
+}
+
+function openAuditModal() {
+  auditForm.value = { audit_status: 'approved', audit_remark: '' }
+  showAuditModal.value = true
+}
+
+async function submitAudit() {
+  if (auditForm.value.audit_status === 'rejected' && !auditForm.value.audit_remark.trim()) {
+    showToast('审核驳回时必须填写说明', 'warning')
+    return
+  }
+  auditLoading.value = true
+  try {
+    await api.post(`/bookings/${bookingId.value}/audit`, auditForm.value)
+    showToast('审核成功', 'success')
+    showAuditModal.value = false
+    await loadBooking()
+  } catch (err) {
+    console.error(err)
+  } finally {
+    auditLoading.value = false
   }
 }
 
@@ -141,6 +172,14 @@ onMounted(() => {
         >
           <Upload class="w-4 h-4" />
           上传名单
+        </button>
+        <button
+          v-if="(authStore.isDispatcher || authStore.isAdmin) && booking?.audit_status === 'pending'"
+          @click="openAuditModal"
+          class="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
+        >
+          <CheckCircle class="w-4 h-4" />
+          审核
         </button>
       </div>
     </div>
@@ -210,6 +249,24 @@ onMounted(() => {
             <div v-if="booking.notes" class="mt-4 pt-4 border-t border-slate-100">
               <p class="text-slate-400 text-xs">备注</p>
               <p class="text-slate-600 text-sm mt-1 leading-relaxed">{{ booking.notes }}</p>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100">
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-slate-400 text-xs">审核结论</p>
+                <StatusBadge :status="booking.audit_status" type="audit" />
+              </div>
+              <div v-if="booking.audit_status !== 'pending'" class="space-y-2 text-sm">
+                <div v-if="booking.audit_remark" class="bg-slate-50 rounded-lg p-3">
+                  <p class="text-slate-500 text-xs mb-1">审核说明</p>
+                  <p class="text-slate-700">{{ booking.audit_remark }}</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs text-slate-500">
+                  <span v-if="booking.audit_by_name">审核人：{{ booking.audit_by_name }}</span>
+                  <span v-if="booking.audit_at">审核时间：{{ new Date(booking.audit_at).toLocaleString('zh-CN') }}</span>
+                </div>
+              </div>
+              <p v-else class="text-sm text-slate-400">等待调度员或管理员审核</p>
             </div>
           </div>
 
@@ -328,5 +385,88 @@ onMounted(() => {
         </div>
       </div>
     </template>
+
+    <div
+      v-if="showAuditModal"
+      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      @click.self="showAuditModal = false"
+    >
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-800">预约审核</h3>
+          <button
+            @click="showAuditModal = false"
+            class="text-slate-400 hover:text-slate-600 text-2xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">审核结论</label>
+            <div class="flex gap-3">
+              <label
+                class="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors"
+                :class="auditForm.audit_status === 'approved' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 hover:bg-slate-50'"
+              >
+                <input
+                  type="radio"
+                  v-model="auditForm.audit_status"
+                  value="approved"
+                  class="sr-only"
+                />
+                <CheckCircle class="w-4 h-4" />
+                <span class="text-sm font-medium">通过</span>
+              </label>
+              <label
+                class="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer transition-colors"
+                :class="auditForm.audit_status === 'rejected' ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200 hover:bg-slate-50'"
+              >
+                <input
+                  type="radio"
+                  v-model="auditForm.audit_status"
+                  value="rejected"
+                  class="sr-only"
+                />
+                <XCircle class="w-4 h-4" />
+                <span class="text-sm font-medium">驳回</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">
+              审核说明
+              <span v-if="auditForm.audit_status === 'rejected'" class="text-red-500"> *</span>
+            </label>
+            <textarea
+              v-model="auditForm.audit_remark"
+              rows="4"
+              class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400 resize-none"
+              :placeholder="auditForm.audit_status === 'rejected' ? '请填写驳回原因...' : '可选：填写审核说明...'"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            @click="showAuditModal = false"
+            :disabled="auditLoading"
+            class="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            取消
+          </button>
+          <button
+            @click="submitAudit"
+            :disabled="auditLoading"
+            class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            <span v-if="auditLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            确认审核
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

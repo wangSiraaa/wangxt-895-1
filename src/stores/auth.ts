@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/lib/api'
 
-export type UserRole = 'sales' | 'dispatcher' | 'guide' | 'catering_admin' | 'finance'
+export type UserRole = 'sales' | 'dispatcher' | 'guide' | 'catering_admin' | 'finance' | 'admin'
 
 export interface User {
   id: string
@@ -17,6 +17,7 @@ export const roleLabelMap: Record<UserRole, string> = {
   guide: '讲解员',
   catering_admin: '餐饮管理员',
   finance: '财务结算',
+  admin: '系统管理员',
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -44,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isGuide = computed(() => user.value?.role === 'guide')
   const isCatering = computed(() => user.value?.role === 'catering_admin')
   const isFinance = computed(() => user.value?.role === 'finance')
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   async function login(username: string, password: string) {
     const data = await api.post<{ token: string; user: User }>('/auth/login', {
@@ -87,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     isGuide,
     isCatering,
     isFinance,
+    isAdmin,
     login,
     logout,
     fetchMe,

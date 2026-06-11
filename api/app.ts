@@ -13,7 +13,7 @@ import { AppError, ERROR_CODES } from './errors/AppError.js'
 import type { ApiResponse } from '../shared/types.js'
 
 import authRoutes from './routes/auth.js'
-import bookingRoutes from './routes/bookings.js'
+import bookingRoutes, { bookingPublicRouter } from './routes/bookings.js'
 import studentRoutes from './routes/students.js'
 import scheduleRoutes from './routes/schedules.js'
 import cateringRoutes from './routes/catering.js'
@@ -34,6 +34,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 app.use('/api/auth', authRoutes)
+app.use('/api', bookingPublicRouter)
 app.use('/api', bookingRoutes)
 app.use('/api', studentRoutes)
 app.use('/api', scheduleRoutes)

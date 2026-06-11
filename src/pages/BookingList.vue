@@ -42,9 +42,16 @@ const columns: Column[] = [
   { key: 'visit_date', label: '到访日期', width: '120px' },
   {
     key: 'status',
-    label: '状态',
+    label: '业务状态',
     width: '120px',
     render: (row: BookingDetail) => h(StatusBadge, { status: row.status }),
+  },
+  {
+    key: 'audit_status',
+    label: '审核状态',
+    width: '120px',
+    render: (row: BookingDetail) =>
+      h(StatusBadge, { status: row.audit_status, type: 'audit' }),
   },
   { key: 'created_by_name', label: '负责销售' },
   {
@@ -57,7 +64,7 @@ const columns: Column[] = [
         {
           class:
             'text-teal-600 hover:text-teal-800 text-sm font-medium',
-          onClick: () => router.push(`/bookings/${row.id}`),
+          onClick: () => router.push(`/app/bookings/${row.id}`),
         },
         '查看详情',
       ),
@@ -84,7 +91,7 @@ async function loadList() {
 }
 
 function createNew() {
-  router.push('/bookings/new')
+  router.push('/app/bookings/new')
 }
 
 onMounted(() => {

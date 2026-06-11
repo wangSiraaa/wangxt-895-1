@@ -47,7 +47,7 @@ const stats: StatCard[] = [
     icon: ClipboardCheck,
     bg: 'from-amber-500 to-orange-500',
     iconBg: 'bg-amber-400/30',
-    path: '/checkin',
+    path: '/app/checkin',
   },
   {
     label: '待排班',
@@ -56,7 +56,7 @@ const stats: StatCard[] = [
     icon: CalendarClock,
     bg: 'from-indigo-500 to-indigo-600',
     iconBg: 'bg-indigo-400/30',
-    path: '/schedules',
+    path: '/app/schedules',
   },
   {
     label: '本月结算',
@@ -65,7 +65,7 @@ const stats: StatCard[] = [
     icon: Wallet,
     bg: 'from-emerald-500 to-emerald-600',
     iconBg: 'bg-emerald-400/30',
-    path: '/settlements',
+    path: '/app/settlements',
   },
 ]
 
@@ -122,11 +122,11 @@ interface QuickAction {
 }
 
 const quickActions: QuickAction[] = [
-  { label: '新建预约', icon: ClipboardList, path: '/bookings/new', roles: ['sales', 'dispatcher'], color: 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200' },
-  { label: '排班管理', icon: CalendarDays, path: '/schedules', roles: ['dispatcher', 'guide'], color: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' },
-  { label: '餐饮确认', icon: UtensilsCrossed, path: '/catering', roles: ['catering_admin', 'dispatcher'], color: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200' },
-  { label: '签到接待', icon: UserCheck, path: '/checkin', roles: ['guide', 'dispatcher'], color: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' },
-  { label: '结算审核', icon: Receipt, path: '/settlements', roles: ['finance'], color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { label: '新建预约', icon: ClipboardList, path: '/app/bookings/new', roles: ['sales', 'dispatcher'], color: 'bg-teal-50 hover:bg-teal-100 text-teal-700 border-teal-200' },
+  { label: '排班管理', icon: CalendarDays, path: '/app/schedules', roles: ['dispatcher', 'guide'], color: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' },
+  { label: '餐饮确认', icon: UtensilsCrossed, path: '/app/catering', roles: ['catering_admin', 'dispatcher'], color: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200' },
+  { label: '签到接待', icon: UserCheck, path: '/app/checkin', roles: ['guide', 'dispatcher'], color: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' },
+  { label: '结算审核', icon: Receipt, path: '/app/settlements', roles: ['finance'], color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
 ]
 
 const visibleActions = computed(() => {

@@ -27,7 +27,7 @@ const router = useRouter()
           返回上一页
         </button>
         <button
-          @click="router.push('/dashboard')"
+          @click="router.push('/app/dashboard')"
           class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors"
         >
           <Home class="w-4 h-4" />

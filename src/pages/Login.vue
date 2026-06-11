@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Eye, EyeOff, Building2, ArrowRight } from 'lucide-vue-next'
+import { Eye, EyeOff, Building2, ArrowRight, ArrowLeft } from 'lucide-vue-next'
 import { useAuthStore, type UserRole } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
@@ -49,7 +49,7 @@ async function handleLogin() {
   try {
     await authStore.login(username.value.trim(), password.value)
     showToast('登录成功', 'success')
-    router.push('/dashboard')
+    router.push('/app/dashboard')
   } catch (err: any) {
     showToast(err?.message || '登录失败，请检查账号密码', 'error')
   } finally {
@@ -143,7 +143,13 @@ async function handleLogin() {
         </div>
       </div>
 
-      <p class="text-center text-xs text-slate-400 mt-6">© 2024 研学接待管理系统 · 演示版本</p>
+      <p class="text-center text-xs text-slate-400 mt-6">
+        <router-link to="/" class="hover:text-teal-600 inline-flex items-center gap-1">
+          <ArrowLeft class="w-3 h-3" /> 返回结果公示
+        </router-link>
+        <span class="mx-2">·</span>
+        © 2024 研学接待管理系统 · 演示版本
+      </p>
     </div>
   </div>
 </template>

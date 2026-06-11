@@ -11,6 +11,7 @@ import CateringList from '@/pages/CateringList.vue'
 import CheckinList from '@/pages/CheckinList.vue'
 import SettlementList from '@/pages/SettlementList.vue'
 import AuditLogList from '@/pages/AuditLogList.vue'
+import PublicResults from '@/pages/PublicResults.vue'
 import NotFound from '@/pages/NotFound.vue'
 import { useAuthStore, type UserRole } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -27,15 +28,26 @@ declare module 'vue-router' {
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/',
+    name: 'PublicResults',
+    component: PublicResults,
+    meta: { title: '预约结果公示', public: true },
+  },
+  {
+    path: '/public-results',
+    redirect: '/',
+    meta: { public: true },
+  },
+  {
     path: '/login',
     name: 'Login',
     component: Login,
     meta: { title: '登录', public: true },
   },
   {
-    path: '/',
+    path: '/app',
     component: MainLayout,
-    redirect: '/dashboard',
+    redirect: '/app/dashboard',
     children: [
       {
         path: 'dashboard',
@@ -127,7 +139,7 @@ router.beforeEach((to, _from, next) => {
 
   if (to.meta.public) {
     if (to.path === '/login' && authStore.isLoggedIn) {
-      return next('/dashboard')
+      return next('/app/dashboard')
     }
     return next()
   }
@@ -141,7 +153,7 @@ router.beforeEach((to, _from, next) => {
     const userRole = authStore.user?.role
     if (!userRole || !to.meta.roles.includes(userRole)) {
       showToast('您没有访问该页面的权限', 'error')
-      return next('/dashboard')
+      return next('/app/dashboard')
     }
   }
 

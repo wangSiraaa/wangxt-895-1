@@ -30,6 +30,11 @@ cd node_modules/better-sqlite3 && npm run install
 | `pnpm run server:dev` | 仅启动后端（端口 3000，nodemon 热更） |
 | `pnpm run client:dev` | 仅启动前端（端口 5173，Vite 代理 `/api` → 3000） |
 
+**启动后访问地址**：
+- 公开结果公示页面（无需登录）：http://localhost:5173/
+- 后台登录：http://localhost:5173/login
+- 健康检查：http://localhost:3000/api/health
+
 ### 4. 端到端验证 (Smoke)
 ```bash
 # 方式 A：脚本自启动 API 进程并清理数据库（推荐，最完整）
@@ -83,16 +88,18 @@ curl http://localhost:3000/api/health
       取消排班/取消预约 → 释放讲解员时段并写入审计日志
 ```
 
-### ✅ 六大硬性约束（100% 落地 + 测试覆盖）
+### ✅ 八大硬性约束（100% 落地 + 测试覆盖）
 
 | 编号 | 约束 | 校验点 | 错误码 |
 |------|------|--------|--------|
-| R1 | **同一讲解员不可重叠排班** | 事务内 SQL 检测 `new_start < exist_end AND new_end > exist_start` | `SCHEDULE_CONFLICT` (409) |
+| R1 | **同一讲解员不可重叠排班**（含新增排班 & 修改预约日期） | 事务内 SQL 检测 `new_start < exist_end AND new_end > exist_start`；修改 `visit_date` 时平移排班时段重新检测 | `SCHEDULE_CONFLICT` (409) |
 | R2 | **未上传名单不可排班/接待** | `booking.status !== 'draft'` 前置拦截 | `NO_STUDENT_LIST` (400) |
 | R3 | **学生人数变化 → 餐饮 + 结算自动重算** | `updateStudentList()` 级联调用 `catering.recalculate()` + `settlement.recalculate()` | — |
 | R4 | **取消已确认接待 → 释放讲解员时段 + 保留审计** | `cancelSchedule()` 删除排班 + 写 `audit_logs` (before/after JSON) | — |
 | R5 | **未完成风险告知不可签到** | `checkin()` 前置检查 `risk_notices` 存在性 | `RISK_NOT_CONFIRMED` (400) |
 | R6 | **非财务角色不可确认结算** | 路由层 `requireRole('finance','admin')` 中间件 + 服务层防御判断 | `FORBIDDEN` (403) / `PERMISSION_DENIED` |
+| R7 | **已审核预约不可重复审核** | `auditBooking()` 前置检查 `audit_status === 'pending'` | `ALREADY_AUDITED` (409) |
+| R8 | **驳回审核必须填写说明** | 服务层 + Zod Schema 双重校验 `audit_remark` 必填（仅驳回时） | `AUDIT_INVALID` (400) |
 
 ### 🔁 并发 & 重复提交
 
@@ -107,8 +114,9 @@ curl http://localhost:3000/api/health
 | 方法 | 路径 | 角色 | 作用 |
 |------|------|------|------|
 | POST | `/auth/login` | 公开 | 登录获取 JWT |
-| GET/POST | `/bookings` / `/bookings/:id` | sales+ | 预约 CRUD |
+| GET/POST | `/bookings` / `/bookings/:id` | sales+ | 预约 CRUD（修改 visit_date 触发讲解员排班冲突检测） |
 | POST | `/bookings/:id/cancel` | sales+ | 取消预约 |
+| POST | `/bookings/:id/audit` | dispatcher+ | **审核预约（通过/驳回，驳回必填说明）** |
 | GET/POST | `/bookings/:id/students` | sales | 获取 / 上传学生&老师名单 |
 | GET/POST/DELETE | `/schedules`，`/schedules/:id` | dispatcher | 查询 / 排班 / 取消排班 |
 | GET/PUT | `/catering/bookings/:id` | catering+ | 餐饮配置 & 确认 |
@@ -121,6 +129,7 @@ curl http://localhost:3000/api/health
 | POST | `/settlements/:id/confirm` | **finance** | **确认结算（仅此角色）** |
 | GET | `/audit-logs?page=&page_size=` | 所有登录 | 操作审计日志 |
 | GET/POST | `/schools` | sales+ | 学校档案 |
+| **GET** | **`/public/results`** | **公开** | **预约审核结果公示（无需登录，仅展示已审核数据，隐藏隐私字段）** |
 | GET | `/health` | 公开 | **连数据库**健康检查 |
 
 ### 结算公式（`settlement.service.ts`）
@@ -137,12 +146,14 @@ curl http://localhost:3000/api/health
 ## 六、前端说明
 
 - **技术栈**：Vue 3.4.38 (`<script setup>`) + TypeScript + Pinia + Vue Router 4 + Tailwind CSS 3 + lucide-vue-next
-- **路由守卫**：`meta.roles` + JWT 中间件，未登录跳 `/login`，无权限跳 `/403`
-- **页面结构**：`MainLayout.vue` 左侧深色导航（teal-700 主色）+ 顶栏用户菜单 + `<router-view />`
-- **业务页面**：Dashboard、预约列表/编辑/详情、排班列表、餐饮列表、签到列表、结算列表、审计日志
-- **API 调用**：`src/lib/api.ts` (axios) 请求拦截注入 `Authorization: Bearer`、响应拦截 401 跳登录 / 统一 Toast
+- **路由守卫**：`meta.roles` + `meta.public` + JWT 中间件，未登录跳 `/login`，无权限跳 `/app/dashboard`
+- **页面结构**：
+  - 公开页面：`/`（结果公示）、`/login`（登录）
+  - 后台页面（`/app/*`，需登录）：`MainLayout.vue` 左侧深色导航（teal-700 主色）+ 顶栏用户菜单 + `<router-view />`
+- **业务页面**：Dashboard、预约列表/编辑/详情、排班列表、餐饮列表、签到列表、结算列表、审计日志、结果公示（公开）
+- **API 调用**：`src/lib/api.ts` (axios) 请求拦截注入 `Authorization: Bearer`（跳过 `/public/*`）、响应拦截 401 跳登录（公开接口除外）/ 统一 Toast
 
-启动后访问 http://localhost:5173 ，在登录页点击"研学销售"按钮（预置账号）即可进入系统。
+启动后访问 http://localhost:5173 直接进入**公开结果公示页面**，点击右上角"登录后台"按钮或访问 `/login`，在登录页点击"研学销售"按钮（预置账号）即可进入系统。
 
 ---
 
@@ -187,7 +198,62 @@ curl http://localhost:3000/api/health
 
 ---
 
-## 八、目录结构
+## 八、失败用例（必须复现的异常路径）
+
+### 🔴 用例 F1：修改预约到访日期 → 讲解员排班冲突（409 SCHEDULE_CONFLICT）
+
+**前置条件**：
+1. `sales` 创建预约 A，到访日期 `2024-06-01`
+2. `sales` 上传学生名单
+3. `dispatcher` 为 `guide1` 在 `2024-06-01` 排 `09:00-12:00` 班次
+4. `dispatcher` 为 `guide1` 在 `2024-06-15` 排 `09:00-12:00` 班次（另一个日期）
+
+**操作步骤**：
+1. `sales` 编辑预约 A，将 `visit_date` 从 `2024-06-01` 修改为 `2024-06-15`
+
+**预期结果**：
+- HTTP 状态码：`409 Conflict`
+- 业务错误码：`SCHEDULE_CONFLICT`
+- 响应 message：包含"讲解员"、"排班冲突"、"2024-06-15"、"guide1" 等关键词
+- 预约 A 的 `visit_date` **未被修改**（保持 `2024-06-01`）
+- 已有的排班记录不受影响
+
+**验证命令（curl）**：
+```bash
+TOKEN=<dispatcher_jwt_token>
+BOOKING_ID=<预约A的ID>
+
+curl -X PATCH "http://localhost:3000/api/bookings/$BOOKING_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"visit_date": "2024-06-15"}'
+
+# 预期：{"success":false,"code":"SCHEDULE_CONFLICT","message":"...讲解员排班冲突..."}
+```
+
+### 🔴 用例 F2：驳回审核不填说明 → 400 AUDIT_INVALID
+```bash
+# 对 pending 状态的预约执行驳回，不填 audit_remark
+curl -X POST "http://localhost:3000/api/bookings/$BOOKING_ID/audit" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"audit_status":"rejected"}'
+# 预期：400 AUDIT_INVALID
+```
+
+### 🔴 用例 F3：已审核预约再次审核 → 409 ALREADY_AUDITED
+```bash
+# 对已审核通过的预约再次执行审核
+curl -X POST "http://localhost:3000/api/bookings/$BOOKING_ID/audit" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"audit_status":"rejected","audit_remark":"再次驳回"}'
+# 预期：409 ALREADY_AUDITED
+```
+
+---
+
+## 九、目录结构
 
 ```
 ├── api/                          # 后端 (Express + TS + ESM)
@@ -203,11 +269,11 @@ curl http://localhost:3000/api/health
 │   └── routes/                   # 9 组路由（auth + 8 业务）
 ├── src/                          # 前端 (Vue 3 + TS)
 │   ├── layouts/MainLayout.vue    # 带角色化菜单的主框架
-│   ├── router/index.ts           # 12 条路由 + meta.roles 守卫
-│   ├── stores/auth.ts            # Pinia 用户态
-│   ├── lib/api.ts                # axios 实例 & 拦截器
-│   ├── pages/                    # 11 个业务页面
-│   └── components/               # DataTable / StatusBadge / AppToast
+│   ├── router/index.ts           # 12+ 条路由 + meta.roles + meta.public 守卫
+│   ├── stores/auth.ts            # Pinia 用户态（含 admin 角色）
+│   ├── lib/api.ts                # axios 实例 & 拦截器（公开接口跳过 token）
+│   ├── pages/                    # 业务页面（含 PublicResults.vue 公开结果公示）
+│   └── components/               # DataTable / StatusBadge（含审核状态）/ AppToast
 ├── shared/types.ts               # 前后端共享类型（Role、BookingStatus、接口、错误码）
 ├── scripts/smoke.mjs             # 端到端验收脚本（--auto 自启动 API）
 ├── data/app.db                   # SQLite 数据库（首次启动生成）
@@ -220,7 +286,7 @@ curl http://localhost:3000/api/health
 
 ---
 
-## 九、排错线索 (Troubleshooting)
+## 十、排错线索 (Troubleshooting)
 
 ### ❌ `Error: Could not locate the bindings file` (better-sqlite3)
 ```bash
@@ -268,12 +334,18 @@ rm -rf data && pnpm run server:dev
 
 ---
 
-## 十、进一步验收建议
+## 十一、进一步验收建议
 
-1. 打开 http://localhost:5173 → 分别用 5 个账号登录，观察左侧菜单差异（权限生效）
-2. 浏览器 DevTools → Network 观察每个操作的 HTTP / 业务错误码
-3. `sqlite3 data/app.db` 手动查询：
-   - `.tables` 列出 10 张表
+1. 打开 http://localhost:5173 → 直接进入**结果公示页面**（无需登录），验证展示已审核预约、日期筛选等功能
+2. 点击右上角"登录后台" → 分别用 5 个账号登录，观察左侧菜单差异（权限生效）
+3. 浏览器 DevTools → Network 观察每个操作的 HTTP / 业务错误码
+4. `sqlite3 data/app.db` 手动查询：
+   - `.tables` 列出表
+   - `SELECT id, audit_status, audit_remark, audit_by, audit_at FROM bookings;` 观察审核字段
    - `SELECT * FROM schedules ORDER BY start_time;` 观察排班
-   - `SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 20;` 观察审计链
-4. 故意制造冲突：dispatcher 同时开两个浏览器标签为同讲解员排同时段 → 第二个标签必返回 `SCHEDULE_CONFLICT`
+   - `SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 20;` 观察审计链（含 audit_approved/audit_rejected）
+5. 故意制造冲突：
+   - dispatcher 同时开两个浏览器标签为同讲解员排同时段 → 第二个标签必返回 `SCHEDULE_CONFLICT`
+   - 修改已排班预约的 `visit_date` 到讲解员已有排班的日期 → 返回 `SCHEDULE_CONFLICT`
+   - 驳回预约不填说明 → `AUDIT_INVALID`
+   - 已审核预约再次审核 → `ALREADY_AUDITED`

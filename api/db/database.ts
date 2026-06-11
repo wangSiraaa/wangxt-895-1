@@ -48,6 +48,10 @@ const DDL_STATEMENTS = [
     contact_name TEXT,
     contact_phone TEXT,
     notes TEXT,
+    audit_status TEXT NOT NULL DEFAULT 'pending' CHECK (audit_status IN ('pending','approved','rejected')),
+    audit_remark TEXT,
+    audit_by TEXT REFERENCES users(id),
+    audit_at TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   )`,
@@ -144,11 +148,32 @@ const DDL_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id)`,
 ]
 
+function migrateBookingsTable(): void {
+  const columns = db
+    .prepare("PRAGMA table_info(bookings)")
+    .all() as { name: string }[]
+  const colNames = new Set(columns.map((c) => c.name))
+
+  if (!colNames.has('audit_status')) {
+    db.exec(`ALTER TABLE bookings ADD COLUMN audit_status TEXT NOT NULL DEFAULT 'pending' CHECK (audit_status IN ('pending','approved','rejected'))`)
+  }
+  if (!colNames.has('audit_remark')) {
+    db.exec(`ALTER TABLE bookings ADD COLUMN audit_remark TEXT`)
+  }
+  if (!colNames.has('audit_by')) {
+    db.exec(`ALTER TABLE bookings ADD COLUMN audit_by TEXT REFERENCES users(id)`)
+  }
+  if (!colNames.has('audit_at')) {
+    db.exec(`ALTER TABLE bookings ADD COLUMN audit_at TEXT`)
+  }
+}
+
 export function initializeDatabase(): void {
   const transaction = db.transaction(() => {
     for (const ddl of DDL_STATEMENTS) {
       db.exec(ddl)
     }
+    migrateBookingsTable()
   })
   transaction()
 }

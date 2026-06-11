@@ -7,9 +7,11 @@ import type {
   CreateBookingPayload,
   UpdateBookingPayload,
   BookingFilter,
+  AuditBookingPayload,
 } from '../../shared/types.js'
 
 const router = Router()
+const publicRouter = Router()
 
 const createSchema = z.object({
   school_id: z.string().min(1),
@@ -23,6 +25,11 @@ const createSchema = z.object({
 
 const updateSchema = createSchema.partial()
 
+const auditSchema = z.object({
+  audit_status: z.enum(['approved', 'rejected']),
+  audit_remark: z.string().optional(),
+})
+
 function parseQueryFilter(req: AuthRequest): BookingFilter {
   const q = req.query
   return {
@@ -30,6 +37,16 @@ function parseQueryFilter(req: AuthRequest): BookingFilter {
     visit_date_to: typeof q.visit_date_to === 'string' ? q.visit_date_to : undefined,
     status: typeof q.status === 'string' ? (q.status as BookingFilter['status']) : undefined,
     school_id: typeof q.school_id === 'string' ? q.school_id : undefined,
+    page: q.page ? Number(q.page) : undefined,
+    page_size: q.page_size ? Number(q.page_size) : undefined,
+  }
+}
+
+function parsePublicFilter(req: AuthRequest): bookingService.PublicResultFilter {
+  const q = req.query
+  return {
+    visit_date_from: typeof q.visit_date_from === 'string' ? q.visit_date_from : undefined,
+    visit_date_to: typeof q.visit_date_to === 'string' ? q.visit_date_to : undefined,
     page: q.page ? Number(q.page) : undefined,
     page_size: q.page_size ? Number(q.page_size) : undefined,
   }
@@ -104,4 +121,34 @@ router.post(
   },
 )
 
+router.post(
+  '/bookings/:id/audit',
+  authenticate,
+  requireRole('dispatcher', 'admin'),
+  (req: AuthRequest, res: Response): void => {
+    const parsed = auditSchema.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError(ERROR_CODES.VALIDATION_ERROR, '参数校验失败', 400, parsed.error.errors)
+    }
+    if (!req.user) throw new AppError(ERROR_CODES.UNAUTHORIZED, '未登录', 401)
+    const data = bookingService.auditBooking(
+      req.params.id,
+      parsed.data as AuditBookingPayload,
+      req.user.id,
+      req.user.real_name,
+    )
+    res.json({ success: true, data })
+  },
+)
+
+publicRouter.get(
+  '/public/results',
+  (_req: AuthRequest, res: Response): void => {
+    const filter = parsePublicFilter(_req)
+    const result = bookingService.getPublicResults(filter)
+    res.json({ success: true, data: result })
+  },
+)
+
 export default router
+export { publicRouter as bookingPublicRouter }
