@@ -6,8 +6,9 @@ export const statusConfig: Record<string, { label: string; classes: string }> = 
   catering_confirmed: { label: '餐饮已确认', classes: 'bg-purple-100 text-purple-700 border-purple-200' },
   risk_confirmed: { label: '风险已告知', classes: 'bg-amber-100 text-amber-700 border-amber-200' },
   checked_in: { label: '已签到', classes: 'bg-teal-100 text-teal-700 border-teal-200' },
-  completed: { label: '已完成', classes: 'bg-green-100 text-green-700 border-green-200' },
   settled: { label: '已结算', classes: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  settlement_confirmed: { label: '结算已确认', classes: 'bg-green-100 text-green-700 border-green-200' },
+  completed: { label: '已完成', classes: 'bg-green-100 text-green-700 border-green-200' },
   cancelled: { label: '已取消', classes: 'bg-red-100 text-red-700 border-red-200' },
 }
 </script>

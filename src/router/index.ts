@@ -62,6 +62,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '预约详情' },
       },
       {
+        path: 'bookings/:id/edit',
+        name: 'BookingEdit',
+        component: BookingEdit,
+        meta: { title: '编辑预约', roles: ['sales', 'dispatcher'] },
+      },
+      {
         path: 'schedules',
         name: 'ScheduleList',
         component: ScheduleList,
